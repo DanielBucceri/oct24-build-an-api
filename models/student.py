@@ -13,4 +13,5 @@ class StudentSchema(ma.Schema):
     class Meta:
         fields = ("id", "name", "email","address")
         
-StudentSchema(many=True).dump()   
+many_studemts = StudentSchema(many=True)  
+one_student =   StudentSchema()  
