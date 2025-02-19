@@ -13,5 +13,7 @@ class StudentSchema(ma.Schema):
     class Meta:
         fields = ("id", "name", "email","address")
         
-many_studemts = StudentSchema(many=True)  
+many_students = StudentSchema(many=True)  
 one_student =   StudentSchema()  
+
+student_without_id  = StudentSchema(excluide=['id'])
