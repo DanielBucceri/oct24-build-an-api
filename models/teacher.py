@@ -1,7 +1,7 @@
 from init import db, ma
 
-class Student(db.Model):
-    __tablename__ = 'students'
+class Teacher(db.Model):
+    __tablename__ = 'teachers'
 
     id = db.Column(db.Integer, primary_key=True)
 
@@ -10,12 +10,12 @@ class Student(db.Model):
     address = db.Column(db.String(250))
 
 
-class StudentSchema(ma.Schema):
+class TeacherSchema(ma.Schema):
     class Meta:
         fields = ('id', 'name', 'email', 'address')
 
 
-one_student = StudentSchema()
-many_students = StudentSchema(many=True)
+one_teacher = TeacherSchema()
+many_teachers = TeacherSchema(many=True)
 
-student_without_id = StudentSchema(exclude=['id'])
+teacher_without_id = TeacherSchema(exclude=['id'])

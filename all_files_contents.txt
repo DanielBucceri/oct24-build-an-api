@@ -1,0 +1,223 @@
+
+==== ./blueprints-controllers/db_bp.py ====
+from flask import Blueprint
+from init import db
+from models.student import Student
+
+db_bp = Blueprint('db', __name__)
+
+@db_bp.cli.command('init')
+def create_tables():
+    db.drop_all()
+    db.create_all()
+    print('Tables created')
+
+@db_bp.cli.command('seed')
+def seed_tables():
+    students = [
+        Student(
+            name='Mary Jones',
+            email='mary.jones@gmail.com',
+            address='Sydney'
+        ),
+        Student(
+            name='John Smith',
+            email='john.smith@outlook.com',
+        )
+    ]
+
+    db.session.add_all(students)
+    db.session.commit()
+    print('Tables seeded')
+
+==== ./blueprints-controllers/students_bp.py ====
+from flask import Blueprint, request
+from sqlalchemy.exc import IntegrityError
+from psycopg2 import errorcodes
+from init import db
+from models.student import Student, many_students, one_student, student_without_id
+
+students_bp = Blueprint('students', __name__)
+
+# Read all - GET /students
+@students_bp.route('/students')
+def get_all_students():
+    stmt = db.select(Student)
+    students = db.session.scalars(stmt)
+    return many_students.dump(students)
+
+# Read one - GET /students/<int:id>
+@students_bp.route('/students/<int:student_id>')
+def get_one_student(student_id):
+    stmt = db.select(Student).filter_by(id=student_id)
+    student = db.session.scalar(stmt)
+    if student:
+        return one_student.dump(student)
+    else:
+        return {'error': f'Student with id {student_id} does not exist'}, 404
+    
+
+# Create - POST /students
+@students_bp.route('/students', methods=['POST'])
+def create_student():
+    try:
+        # Get incoming request body (JSON)
+        data = student_without_id.load(request.json)
+        # Create a new instance of Student model
+        new_student = Student(
+            name=data.get('name'),
+            email=data.get('email'),
+            address=data.get('address')
+        )
+        # Add the instance to the db session
+        db.session.add(new_student)
+        # Commit the session
+        db.session.commit()
+        # Return the new Student instance
+        return one_student.dump(new_student), 201
+    except IntegrityError as err:
+        if err.orig.pgcode == errorcodes.UNIQUE_VIOLATION:
+            return {"error": "Email address already in use"}, 409 # Conflict
+        elif err.orig.pgcode == errorcodes.NOT_NULL_VIOLATION:
+             return {"error": str(err.orig)}, 400
+        else:
+            return {"error": err.orig.diag.message_detail}, 400
+
+
+# Update - PUT /students/<int:id>
+@students_bp.route('/students/<int:student_id>', methods=['PUT', 'PATCH'])
+def update_student(student_id):
+    try:
+        # Fetch the student by id
+        stmt = db.select(Student).filter_by(id=student_id)
+        student = db.session.scalar(stmt)
+        if student:
+            # Get incoming request body (JSON)
+            data = student_without_id.load(request.json)
+            # Update the attributes of the student with the incoming data
+            student.name = data.get('name') or student.name
+            student.email = data.get('email') or student.email
+            student.address = data.get('address', student.address)
+            # Commit the session
+            db.session.commit()
+            # Return the new Student instance
+            return one_student.dump(student)
+        else:
+            return {'error': f'Student with id {student_id} does not exist'}, 404 
+    except IntegrityError as err:
+        if err.orig.pgcode == errorcodes.UNIQUE_VIOLATION:
+            return {"error": "Email address already in use"}, 409 # Conflict
+        else:
+            return {"error": str(err.orig)}, 400
+
+
+# Delete - DELETE /students/<int:id>
+@students_bp.route('/students/<int:student_id>', methods=['DELETE'])
+def delete_student(student_id):
+    stmt = db.select(Student).filter_by(id=student_id)
+    student = db.session.scalar(stmt)
+    if student:
+        db.session.delete(student)
+        db.session.commit()
+        return {}, 204
+    else:
+        return {'error': f'Student with id {student_id} does not exist'}, 404 
+   
+
+# Possible extra routes:
+# Enrol - POST /students/<int:student_id>/<int:course_id>
+# Unenrol - DELETE /students/<int:student_id>/<int:course_id>
+==== ./init.py ====
+from flask_sqlalchemy import SQLAlchemy
+from flask_marshmallow import Marshmallow
+
+db = SQLAlchemy()
+ma = Marshmallow()
+
+==== ./main.py ====
+from flask import Flask
+from init import db, ma
+import os
+from blueprints.db_bp import db_bp
+from blueprints.students_bp import students_bp
+
+def create_app():
+    app = Flask(__name__)
+
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DB_URI')
+
+    db.init_app(app)
+    ma.init_app(app)
+
+    app.register_blueprint(db_bp)
+    app.register_blueprint(students_bp)
+
+    return app
+
+==== ./models/student.py ====
+from init import db, ma
+
+class Student(db.Model):
+    __tablename__ = 'students'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(200), nullable=False, unique=True)
+    address = db.Column(db.String(250))
+
+
+class StudentSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'name', 'email', 'address')
+
+
+one_student = StudentSchema()
+many_students = StudentSchema(many=True)
+
+student_without_id = StudentSchema(exclude=['id'])
+
+==== ./requirements.txt ====
+blinker==1.9.0
+click==8.1.8
+Flask==3.1.0
+flask-marshmallow==1.3.0
+Flask-SQLAlchemy==3.1.1
+greenlet==3.1.1
+itsdangerous==2.2.0
+Jinja2==3.1.5
+MarkupSafe==3.0.2
+marshmallow==3.26.1
+packaging==24.2
+python-dotenv==1.0.1
+SQLAlchemy==2.0.38
+typing_extensions==4.12.2
+Werkzeug==3.1.3
+
+==== ./temp_script.sh ====
+#!/bin/bash
+OUTPUT_FILE="all_files_contents.txt"
+EXCLUDE_DIRS=("__pycache__" ".git" ".env" ".flaskenv")
+EXCLUDE_FILES=(".gitignore" "lms.drawio" "README.md" "$OUTPUT_FILE")
+> "$OUTPUT_FILE"
+process_files() {
+    local folder="$1"
+    for file in "$folder"/*; do
+        if [[ -d "$file" ]]; then
+            dir_name=$(basename "$file")
+            if [[ " ${EXCLUDE_DIRS[@]} " =~ " $dir_name " ]]; then
+                continue
+            fi
+            process_files "$file"
+        elif [[ -f "$file" ]]; then
+            file_name=$(basename "$file")
+            if [[ " ${EXCLUDE_FILES[@]} " =~ " $file_name " ]]; then
+                continue
+            fi
+            echo -e "\n==== $file ====" >> "$OUTPUT_FILE"
+            cat "$file" >> "$OUTPUT_FILE"
+        fi
+    done
+}
+process_files "."
+echo "All relevant files and contents have been saved to $OUTPUT_FILE"
