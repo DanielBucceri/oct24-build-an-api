@@ -26,7 +26,7 @@ def seed_tables():
     ]
     
 
-    Teachers = [
+    teachers = [
         Teacher(
             name="Mr Robot",
             email="john.smith@outlok.copm"
@@ -39,5 +39,6 @@ def seed_tables():
     ]
 
     db.session.add_all(students)
+    db.session.add_all(teachers)
     db.session.commit()
     print('Tables seeded')
