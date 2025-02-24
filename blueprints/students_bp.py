@@ -10,7 +10,7 @@ students_bp = Blueprint('students', __name__)
 @students_bp.route('/students')
 def get_all_students():
     stmt = db.select(Student)
-    students = db.session.scalars(stmt)
+    students = db.session.scalars(stmt).orderby(Student.name)
     return many_students.dump(students)
 
 # Read one - GET /students/<int:id>
