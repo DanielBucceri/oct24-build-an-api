@@ -7,12 +7,12 @@ class Teacher(db.Model):
 
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(200), nullable=False, unique=True)
-    address = db.Column(db.String(250))
+    department = db.Column(db.String(250))
 
 
 class TeacherSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'name', 'email', 'address')
+        fields = ('id', 'name', 'email', 'department')
 
 
 one_teacher = TeacherSchema()
