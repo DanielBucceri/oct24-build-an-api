@@ -9,7 +9,7 @@ teachers_bp = Blueprint('teachers', __name__)
 # Read all - GET /teachers
 @teachers_bp.route('/teachers')
 def get_all_teachers():
-    stmt = db.select(Teacher).orderby(Teacher.name) 
+    stmt = db.select(Teacher).order_by(Teacher.name) 
     teachers = db.session.scalars(stmt)
     return many_teachers.dump(teachers)
 

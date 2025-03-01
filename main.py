@@ -1,6 +1,8 @@
 from flask import Flask
 from init import db, ma
+from marshmallow.exceptions import ValidationError
 import os
+from dotenv import load_dotenv
 from blueprints.db_bp import db_bp
 from blueprints.students_bp import students_bp
 from blueprints.teachers_bp import teachers_bp
@@ -13,6 +15,10 @@ def create_app():
 
     db.init_app(app)
     ma.init_app(app)
+    
+    @app.errorhandler(ValidationError)
+    def validation_error(err):
+        return {"error": str(err)}, 400
 
     app.register_blueprint(db_bp)
     app.register_blueprint(students_bp)
